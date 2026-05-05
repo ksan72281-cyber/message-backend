@@ -15,6 +15,45 @@ db = client["messagebot"]
 def home():
     return "OK"
 
+# ===== USER ROUTES =====
+
+@app.route("/register", methods=["POST"])
+def register():
+    data = request.json
+    username = data.get("username", "").lower().strip()
+    pw = data.get("pw", "")
+    if not username or not pw:
+        return jsonify({"status": "error", "msg": "username/pw required"}), 400
+    existing = db.users.find_one({"username": username})
+    if existing:
+        return jsonify({"status": "exists"})
+    db.users.insert_one({
+        "username": username,
+        "displayName": data.get("displayName", username),
+        "pw": pw,
+        "createdAt": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
+    return jsonify({"status": "ok"})
+
+@app.route("/login", methods=["POST"])
+def login():
+    data = request.json
+    username = data.get("username", "").lower().strip()
+    pw = data.get("pw", "")
+    user = db.users.find_one({"username": username}, {"_id": 0})
+    if not user:
+        return jsonify({"status": "notfound"})
+    if user["pw"] != pw:
+        return jsonify({"status": "wrongpw"})
+    return jsonify({"status": "ok", "displayName": user.get("displayName", username)})
+
+@app.route("/get-users", methods=["GET"])
+def get_users():
+    users = list(db.users.find({}, {"_id": 0}))
+    return jsonify(users)
+
+# ===== ORDER ROUTES =====
+
 @app.route("/save-order", methods=["POST"])
 def save_order():
     data = request.json
@@ -26,22 +65,6 @@ def save_order():
 def get_orders():
     orders = list(db.orders.find({}, {"_id": 0}))
     return jsonify(orders)
-
-@app.route("/save-user", methods=["POST"])
-def save_user():
-    data = request.json
-    existing = db.users.find_one({"userId": data["userId"]})
-    if not existing:
-        db.users.insert_one(data)
-    return jsonify({"status": "ok"})
-
-@app.route("/get-user", methods=["GET"])
-def get_user():
-    userId = request.args.get("userId")
-    user = db.users.find_one({"userId": userId}, {"_id": 0})
-    if user:
-        return jsonify(user)
-    return jsonify(None)
 
 @app.route("/delete-order", methods=["POST"])
 def delete_order():
