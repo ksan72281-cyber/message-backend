@@ -61,6 +61,29 @@ def clear_orders():
     db.orders.delete_many({})
     return jsonify({"status": "ok"})
 
+# ===== DELETE USER =====
+@app.route("/delete-user", methods=["POST"])
+def delete_user():
+    data = request.json
+    db.users.delete_one({"userId": data["userId"]})
+    return jsonify({"status": "ok"})
+
+# ===== MAINTENANCE MODE =====
+@app.route("/get-maintenance", methods=["GET"])
+def get_maintenance():
+    doc = db.settings.find_one({"key": "maintenance"}, {"_id": 0})
+    return jsonify({"maintenance": doc["value"] if doc else False})
+
+@app.route("/set-maintenance", methods=["POST"])
+def set_maintenance():
+    data = request.json
+    db.settings.update_one(
+        {"key": "maintenance"},
+        {"$set": {"key": "maintenance", "value": data["value"]}},
+        upsert=True
+    )
+    return jsonify({"status": "ok"})
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
